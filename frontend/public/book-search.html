@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>正在搜索书籍...</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .container {
+            text-align: center;
+            padding: 2rem;
+        }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .message {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+        .book-title {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="spinner"></div>
+        <div class="message">正在搜索书籍...</div>
+        <div class="book-title" id="bookTitle"></div>
+        <div style="margin-top: 2rem; font-size: 0.9rem; opacity: 0.8;">
+            正在跳转到书籍搜索网站...<br>
+            如果页面没有自动跳转，请手动点击搜索结果中的第一本书
+        </div>
+        <div style="margin-top: 1rem; font-size: 0.85rem; opacity: 0.7;">
+            提示：如果当前网站找不到，可以尝试其他书籍搜索网站
+        </div>
+    </div>
+
+    <script>
+        // 从URL参数获取搜索关键词
+        const urlParams = new URLSearchParams(window.location.search);
+        let query = urlParams.get('q') || '';
+        
+        if (query) {
+            // 优化搜索关键词：提取书名关键词
+            query = decodeURIComponent(query);
+            document.getElementById('bookTitle').textContent = query;
+            
+            // 优化搜索关键词：提取书名关键词
+            let searchQuery = query;
+            
+            // 如果包含书名标记，提取书名部分
+            if (query.includes('《') && query.includes('》')) {
+                const match = query.match(/《([^》]+)》/);
+                if (match) {
+                    searchQuery = match[1];
+                }
+            }
+            
+            // 移除常见的描述性词汇和标点
+            searchQuery = searchQuery
+                .replace(/电子书|在线阅读|PDF|下载|：|:/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+            
+            // 尝试多个书籍网站（按优先级，使用不同的搜索策略）
+            const sites = [
+                {
+                    name: 'Z-Library',
+                    // 使用英文书名或简化搜索
+                    url: `https://z-lib.is/s/${encodeURIComponent(searchQuery)}`
+                },
+                {
+                    name: 'Library Genesis',
+                    url: `https://libgen.is/search.php?req=${encodeURIComponent(searchQuery)}&lg_topic=libgen&open=0&view=simple&res=25&phrase=1&column=def`
+                },
+                {
+                    name: 'PDF Drive',
+                    url: `https://www.pdfdrive.com/search?q=${encodeURIComponent(searchQuery)}`
+                },
+                {
+                    name: 'Internet Archive',
+                    url: `https://archive.org/search.php?query=${encodeURIComponent(searchQuery)}`
+                },
+                {
+                    name: 'Google Books',
+                    url: `https://www.google.com/search?tbm=bks&q=${encodeURIComponent(searchQuery)}`
+                }
+            ];
+            
+            // 尝试使用英文书名（如果是中文书名）
+            let englishQuery = searchQuery;
+            const bookNameMap = {
+                '电影艺术': 'Film Art',
+                '形式与风格': 'Form and Style',
+                '故事': 'Story',
+                '电影摄影': 'Cinematography',
+                '剪辑': 'Editing',
+                '声音设计': 'Sound Design'
+            };
+            
+            // 如果包含中文书名关键词，尝试使用英文
+            for (const [chinese, english] of Object.entries(bookNameMap)) {
+                if (searchQuery.includes(chinese)) {
+                    englishQuery = english;
+                    break;
+                }
+            }
+            
+            // 优先使用Z-Library，如果失败可以手动尝试其他网站
+            console.log(`搜索关键词（中文）: ${searchQuery}`);
+            console.log(`搜索关键词（英文）: ${englishQuery}`);
+            console.log(`跳转到: ${sites[0].name}`);
+            
+            // 直接跳转到Z-Library
+            window.location.href = sites[0].url;
+        } else {
+            document.querySelector('.message').textContent = '缺少搜索关键词';
+        }
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,109 @@
+# FastAPI核心
+fastapi>=0.123.0
+uvicorn[standard]>=0.38.0
+starlette>=0.50.0
+
+# 数据库
+sqlalchemy>=2.0.45
+alembic>=1.17.2
+
+# 数据验证
+pydantic>=2.11.9
+pydantic-settings>=2.12.0
+pydantic[email]>=2.11.9
+
+# 环境变量
+python-dotenv>=1.1.1
+
+# 认证和安全
+python-jose[cryptography]>=3.5.0
+passlib[bcrypt]>=1.7.4
+bcrypt>=4.3.0
+
+# HTTP客户端
+httpx>=0.28.1
+requests>=2.31.0
+
+# 异步任务
+celery>=5.6.0
+redis>=7.1.0
+kombu>=5.6.1
+billiard>=4.2.4
+vine>=5.1.0
+
+# WebSocket
+websockets>=15.0.1
+websocket-client>=1.9.0
+
+# 文件处理
+aiofiles>=25.1.0
+python-multipart>=0.0.20
+
+# AI服务
+openai>=2.8.1
+dashscope>=1.14.0  # 阿里云百炼DashScope SDK（通义万相文生视频/图生视频）
+oss2>=2.19.1  # 阿里云OSS SDK（用于图片上传到公网）
+
+# 图像处理
+pillow>=11.3.0
+opencv-python>=4.8.1.78
+
+# 视频处理
+ffmpeg-python>=0.2.0
+scenedetect>=0.6.7.1
+moviepy>=2.2.1
+av>=15.1.0
+
+# 音频处理
+librosa>=0.11.0
+soundfile>=0.13.1
+faster-whisper>=1.2.1
+openai-whisper>=20250625
+whisperx>=3.7.4
+speechbrain>=1.0.3
+pyannote.audio>=3.4.0
+
+# 语音合成
+edge-tts>=7.2.3
+coqui-tts>=0.27.2
+
+# 数值计算
+numpy>=1.26.4
+scipy>=1.16.3
+
+# 机器学习
+scikit-learn>=1.8.0
+pandas>=2.2.3
+lightgbm>=4.6.0
+xgboost>=3.0.5
+
+# 可视化
+matplotlib>=3.10.7
+seaborn>=0.13.2
+plotly>=6.5.0
+
+# 文本处理
+nltk>=3.9.2
+jieba>=0.42.1
+transformers>=4.30.0
+sentence-transformers>=5.1.2
+langchain>=1.1.0
+langchain-core>=1.1.0
+langchain-openai>=1.1.0
+
+# 向量数据库
+chromadb>=1.3.5
+
+# PDF处理
+pypdf>=6.4.1
+python-docx>=1.2.0
+
+# 测试
+pytest>=9.0.2
+pytest-asyncio>=1.3.0
+
+# 其他工具
+gradio-client>=2.0.1
+tqdm>=4.66.2
+colorama>=0.4.6
+python-dateutil>=2.9.0

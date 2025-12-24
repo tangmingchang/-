@@ -1,0 +1,564 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 手写体字体定义 - 用于所有标题 */
+@font-face {
+  font-family: 'DymonShouXieTi';
+  src: url('/fronts/Dymon-ShouXieTi.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  
+  /* 标题字体 */
+  --font-heading: 'DymonShouXieTi', 'Dymon ShouXieTi', cursive;
+}
+
+html {
+  background-color: var(--bg-primary);
+}
+
+.dark html {
+  background-color: var(--bg-primary) !important;
+  background: var(--bg-primary) !important;
+}
+
+/* 日间主题 - 小王子在沙漠（柔和沙漠 + 浅蓝天空 + 亮金星尘） */
+:root {
+  --bg-primary: #fef9e7;   /* 柔软沙漠米黄 */
+  --bg-secondary: #fdf6e3; /* 更浅一点的沙色 */
+  --bg-elevated: rgba(255, 255, 255, 0.82); /* 玻璃卡片底 */
+  --text-primary: #1e293b;  /* 深蓝灰 */
+  --text-secondary: #64748b; /* 中灰蓝 */
+  
+  /* 星光与强调色 */
+  --star-gold: #fbbf24;      /* 亮一点的金色星尘 */
+  --rose-pink: #f9739b;      /* 玫瑰花瓣粉 */
+  --fox-orange: #f97316;     /* 狐狸的橙 */
+  --planet-blue: #38bdf8;    /* 星球的浅蓝 */
+  
+  /* 边框与描边 */
+  --border-color-soft: rgba(255, 255, 255, 0.6);
+  --border-color-strong: rgba(148, 163, 184, 0.6);
+  --border-color: #e8dcc4;
+}
+
+/* 夜间主题 - 小王子在星空（深蓝宇宙 + 紫色星云 + 玫瑰光晕） */
+.dark {
+  --bg-primary: #020617;    /* 极深蓝，而不是死黑 */
+  --bg-secondary: #030712;   /* 更深一点的蓝黑 */
+  --bg-elevated: rgba(15, 23, 42, 0.78); /* 玻璃卡底，略透 */
+  --text-primary: #e2e8f0;   /* 浅灰白 */
+  --text-secondary: #c4b5fd; /* 淡紫 */
+  
+  /* 星光与强调色 */
+  --star-gold: #facc15;      /* 偏亮的星光金 */
+  --rose-pink: #fb7185;      /* 夜晚的玫瑰红亮点 */
+  --fox-orange: #f97316;     /* 不变，狐尾亮点 */
+  --planet-blue: #6366f1;    /* 星云蓝紫 */
+  
+  /* 边框与描边 */
+  --border-color-soft: rgba(148, 163, 184, 0.4);
+  --border-color-strong: rgba(129, 140, 248, 0.6);
+  --border-color: #4c1d95;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  position: relative;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url(/旷野页面.png);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  /* 更虚化的背景，在上面加玻璃白雾层，避免喧宾夺主 */
+  filter: blur(2px) brightness(1.1);
+}
+
+body:not(.dark)::before {
+  opacity: 1;
+}
+
+.dark body {
+  background-color: var(--bg-primary) !important;
+  background: var(--bg-primary) !important;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.dark body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--bg-primary);
+  background-image: url(/星空页面.png);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 1;
+  /* 深蓝紫 + 低对比度星星为主，不压前景文字 */
+  filter: brightness(0.7) contrast(0.9);
+}
+
+
+@keyframes starrySky {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes twinkleStars {
+  0%, 100% {
+    opacity: 0.2;
+    transform: scale(1);
+  }
+  25% {
+    opacity: 0.8;
+    transform: scale(1.1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+  75% {
+    opacity: 0.6;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes twinkleStarsPurple {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  33% {
+    opacity: 0.9;
+    transform: scale(1.15);
+  }
+  66% {
+    opacity: 1;
+    transform: scale(1.25);
+  }
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+  position: relative;
+  z-index: 1;
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.dark html {
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+.dark #root {
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+/* 覆盖所有页面的背景色 */
+.bg-gradient-paper {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.dark .bg-gradient-paper {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* 毛玻璃效果 - 小王子星球玻璃罩 */
+.glass {
+  background: var(--bg-elevated);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color-soft);
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.05),
+    /* 卡片边缘高光 - 左上角金色光斑 */
+    radial-gradient(circle at top left, rgba(250, 204, 21, 0.45), transparent 60%);
+}
+
+.dark .glass {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color-strong);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 
+    0 2px 8px rgba(168, 85, 247, 0.1),
+    /* 夜间模式边缘光晕 */
+    radial-gradient(circle at top right, rgba(129, 140, 248, 0.3), transparent 60%);
+}
+
+/* 卡片悬浮效果 */
+.card-hover {
+  transition: all 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.dark .card-hover:hover {
+  box-shadow: 0 10px 25px rgba(0, 217, 255, 0.1);
+}
+
+/* 渐变文字 - 日间：旷野里的光（浅蓝星球光 → 草绿色希望 → 金色星尘） */
+.gradient-text {
+  background: linear-gradient(135deg, #38bdf8 0%, #22c55e 50%, #fbbf24 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-family: var(--font-heading);
+}
+
+/* 渐变文字 - 夜间：银河里的光（靛蓝星云 → 紫色光晕 → 玫瑰粉） */
+.dark .gradient-text {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #f9739b 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-family: var(--font-heading);
+}
+
+/* 标题字体类 */
+h1, h2, h3, h4, h5, h6,
+.text-heading,
+.font-heading {
+  font-family: var(--font-heading);
+}
+
+/* 夜间模式蓝紫夜空渐变 */
+.dark .bg-gradient-creative {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+}
+
+/* 霓虹发光效果 */
+.neon-glow {
+  text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor;
+}
+
+/* 金色文字和图标（日间模式）- 提升对比度 */
+.text-gold {
+  color: #b45309; /* 更深的金色，提升对比度 */
+}
+
+.dark .text-gold {
+  color: #ffffff;
+}
+
+/* 确保文字对比度符合WCAG标准 */
+.text-gold-700 {
+  color: #92400e; /* 深金色，确保在浅色背景上可读 */
+}
+
+.dark .text-gold-700 {
+  color: #c4b5fd; /* 夜间模式使用淡紫色 */
+}
+
+/* 图标金色（日间模式） */
+.icon-gold {
+  color: #d97706;
+}
+
+.dark .icon-gold {
+  color: #ffffff;
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* 小王子风格动画 */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+@keyframes shooting-star {
+  0% {
+    transform: translateX(-100px) translateY(-100px);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(200px) translateY(200px);
+    opacity: 0;
+  }
+}
+
+@keyframes floatStars {
+  0% {
+    transform: translateY(0) translateX(0);
+  }
+  33% {
+    transform: translateY(-20px) translateX(10px);
+  }
+  66% {
+    transform: translateY(10px) translateX(-10px);
+  }
+  100% {
+    transform: translateY(0) translateX(0);
+  }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse-slow {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.animate-twinkle {
+  animation: twinkle 2s ease-in-out infinite;
+}
+
+.animate-shooting-star {
+  animation: shooting-star 3s linear infinite;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 20s linear infinite;
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s ease-in-out infinite;
+}
+
+/* 环绕星环效果 */
+@keyframes orbit-ring {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.orbit-ring {
+  position: absolute;
+  border: 2px solid rgba(250, 204, 21, 0.4);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.orbit-ring::before,
+.orbit-ring::after {
+  content: '';
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: #facc15;
+  border-radius: 50%;
+  top: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.orbit-ring::after {
+  top: auto;
+  bottom: -2px;
+}
+
+/* 时间星轨效果 */
+.star-track {
+  position: relative;
+  padding: 2rem 0;
+}
+
+.star-track::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(to right, transparent, rgba(250, 204, 21, 0.3), transparent);
+  transform: translateY(-50%);
+}
+
+.star-item {
+  position: relative;
+  z-index: 1;
+}
+
+.star-item::before {
+  content: '⭐';
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  animation: twinkle 2s ease-in-out infinite;
+}
+
+.ripple-effect {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0) 70%);
+  animation: ripple 0.9s ease-out;
+  pointer-events: none;
+}
+
+@keyframes ripple {
+  from { transform: scale(0); opacity: 0.6; }
+  to { transform: scale(2.6); opacity: 0; }
+}
+
+/* ========== 通用标题类（约2倍字号） ========== */
+/* 页面大标题：原来 text-2xl 左右 → 现在约翻倍 */
+.page-title {
+  @apply text-4xl md:text-5xl font-semibold tracking-tight;
+  font-family: var(--font-heading);
+}
+
+/* 区块标题：原来 text-lg 左右 → 现在约翻倍 */
+.section-title {
+  @apply text-2xl md:text-3xl font-semibold tracking-tight;
+  font-family: var(--font-heading);
+}
+
+/* 小标题 / 卡片标题：略大于正文 */
+.card-title {
+  @apply text-xl md:text-2xl font-semibold;
+  font-family: var(--font-heading);
+}
+
+/* ========== 通用视觉工具样式（星球风格） ========== */
+/* 玻璃卡片效果 */
+.glass-card {
+  @apply relative rounded-3xl border border-white/30 bg-white/70 dark:bg-slate-900/70;
+  @apply shadow-[0_0_40px_rgba(148,163,184,0.35)];
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+/* 星光边缘高光（用于卡片内局部装饰） */
+.planet-glow::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 999px;
+  background: radial-gradient(
+    circle at 15% 0%,
+    rgba(250, 204, 21, 0.55),
+    transparent 65%
+  );
+  pointer-events: none;
+}
+
+/* 小幅上下浮动 */
+@keyframes float-soft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.floating {
+  animation: float-soft 5s ease-in-out infinite;
+}
+
+/* 星环效果（选中项目用的环绕光圈） */
+.ring-planet {
+  position: relative;
+}
+
+.ring-planet::before {
+  content: "";
+  position: absolute;
+  inset: -12px;
+  border-radius: 999px;
+  border: 2px dashed rgba(250, 204, 21, 0.7);
+  box-shadow: 0 0 40px rgba(250, 204, 21, 0.45);
+  pointer-events: none;
+}
+
+/* 聊天气泡的大玻璃泡 */
+.chat-bubble {
+  @apply glass-card border-white/20;
+}
+
+/* 聊天单条消息星尘气泡 */
+.message-bubble {
+  @apply inline-block rounded-2xl px-4 py-2 text-sm md:text-base;
+  @apply bg-gradient-to-r from-indigo-500/70 via-violet-500/70 to-rose-400/70;
+  @apply text-white shadow-[0_0_25px_rgba(129,140,248,0.55)];
+}
+
+/* 飞翔小王子浮动 */
+@keyframes float-fly {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  50% { transform: translateY(-10px) translateX(4px); }
+}
+
+.fly-little-prince {
+  animation: float-fly 6s ease-in-out infinite;
+}
+
+/* 慢速旋转（用于进度环） */
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 6s linear infinite;
+}
+
