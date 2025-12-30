@@ -4,7 +4,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from datetime import datetime
 from app.core.database import get_db
 from app.core.security import get_current_active_user, require_role
@@ -36,13 +36,14 @@ class EvaluationCreate(BaseModel):
     artistic_feedback: Optional[str] = None
     overall_comment: Optional[str] = None
     suggestions: Optional[str] = None
+    teacher_feedback_box: Optional[str] = None
 
 class EvaluationResponse(BaseModel):
     """评估响应模型"""
     id: int
     project_id: int
     evaluator_user_id: Optional[int]
-    evaluation_type: EvaluationType
+    evaluation_type: str  # 使用字符串类型，避免枚举序列化问题
     cinematography_score: Optional[float]
     editing_score: Optional[float]
     sound_score: Optional[float]
@@ -55,10 +56,113 @@ class EvaluationResponse(BaseModel):
     artistic_feedback: Optional[str]
     overall_comment: Optional[str]
     suggestions: Optional[str]
+    teacher_feedback_box: Optional[str] = None
+    detailed_analysis: Optional[dict] = None
     created_at: datetime
+    updated_at: Optional[datetime] = None
+    
+    @classmethod
+    def from_orm(cls, obj: Evaluation):
+        """从ORM对象创建响应模型"""
+        from datetime import datetime
+        # 安全地获取evaluation_type的值
+        if obj.evaluation_type is None:
+            eval_type_str = "unknown"
+        elif isinstance(obj.evaluation_type, str):
+            eval_type_str = obj.evaluation_type
+        elif hasattr(obj.evaluation_type, 'value'):
+            eval_type_str = obj.evaluation_type.value
+        else:
+            eval_type_str = str(obj.evaluation_type)
+        
+        return cls(
+            id=obj.id,
+            project_id=obj.project_id,
+            evaluator_user_id=obj.evaluator_user_id,
+            evaluation_type=eval_type_str,
+            cinematography_score=obj.cinematography_score,
+            editing_score=obj.editing_score,
+            sound_score=obj.sound_score,
+            overall_technical_score=obj.overall_technical_score,
+            narrative_score=obj.narrative_score,
+            visual_aesthetics_score=obj.visual_aesthetics_score,
+            emotional_impact_score=obj.emotional_impact_score,
+            overall_artistic_score=obj.overall_artistic_score,
+            technical_feedback=obj.technical_feedback,
+            artistic_feedback=obj.artistic_feedback,
+            overall_comment=obj.overall_comment,
+            suggestions=obj.suggestions,
+            teacher_feedback_box=obj.teacher_feedback_box,
+            detailed_analysis=obj.detailed_analysis,
+            created_at=obj.created_at if obj.created_at else datetime.utcnow(),
+            updated_at=obj.updated_at,
+        )
+    
+    @model_validator(mode='before')
+    @classmethod
+    def convert_evaluation_type(cls, data):
+        """在验证前转换evaluation_type枚举"""
+        if isinstance(data, dict):
+            if 'evaluation_type' in data and not isinstance(data['evaluation_type'], str):
+                eval_type = data['evaluation_type']
+                if hasattr(eval_type, 'value'):
+                    data['evaluation_type'] = eval_type.value
+                else:
+                    data['evaluation_type'] = str(eval_type)
+        elif hasattr(data, 'evaluation_type'):
+            # 如果是对象，转换为字典
+            eval_type = data.evaluation_type
+            if not isinstance(eval_type, str):
+                if hasattr(eval_type, 'value'):
+                    data.evaluation_type = eval_type.value
+                else:
+                    data.evaluation_type = str(eval_type)
+        return data
     
     class Config:
         from_attributes = True
+
+def evaluation_to_response(eval: Evaluation) -> EvaluationResponse:
+    """将SQLAlchemy评估对象转换为响应模型"""
+    # 安全地获取evaluation_type的值
+    if eval.evaluation_type is None:
+        eval_type_str = "unknown"
+    elif isinstance(eval.evaluation_type, str):
+        eval_type_str = eval.evaluation_type
+    elif hasattr(eval.evaluation_type, 'value'):
+        eval_type_str = eval.evaluation_type.value
+    else:
+        eval_type_str = str(eval.evaluation_type)
+    
+    # 确保 created_at 不为 None（数据库应该有默认值，但以防万一）
+    if eval.created_at is None:
+        from datetime import datetime
+        created_at = datetime.utcnow()
+    else:
+        created_at = eval.created_at
+    
+    return EvaluationResponse(
+        id=eval.id,
+        project_id=eval.project_id,
+        evaluator_user_id=eval.evaluator_user_id,
+        evaluation_type=eval_type_str,
+        cinematography_score=eval.cinematography_score,
+        editing_score=eval.editing_score,
+        sound_score=eval.sound_score,
+        overall_technical_score=eval.overall_technical_score,
+        narrative_score=eval.narrative_score,
+        visual_aesthetics_score=eval.visual_aesthetics_score,
+        emotional_impact_score=eval.emotional_impact_score,
+        overall_artistic_score=eval.overall_artistic_score,
+        technical_feedback=eval.technical_feedback,
+        artistic_feedback=eval.artistic_feedback,
+        overall_comment=eval.overall_comment,
+        suggestions=eval.suggestions,
+        teacher_feedback_box=eval.teacher_feedback_box,
+        detailed_analysis=eval.detailed_analysis,
+        created_at=created_at,
+        updated_at=eval.updated_at,
+    )
 
 @router.post("/", response_model=EvaluationResponse, status_code=status.HTTP_201_CREATED)
 async def create_evaluation(
@@ -67,49 +171,58 @@ async def create_evaluation(
     db: Session = Depends(get_db)
 ):
     """创建评估"""
-    # 检查项目是否存在
-    project = db.query(Project).filter(Project.id == evaluation_data.project_id).first()
-    if not project:
-        raise HTTPException(status_code=404, detail="项目不存在")
-    
-    # 权限检查
-    if evaluation_data.evaluation_type == EvaluationType.TEACHER:
-        # 教师评估：必须是教师或管理员，且项目属于其课程
-        if current_user.role not in [UserRole.TEACHER, UserRole.ADMIN]:
-            raise HTTPException(status_code=403, detail="只有教师可以创建教师评估")
-    elif evaluation_data.evaluation_type == EvaluationType.PEER:
-        # 同伴互评：必须是学生，且不能评估自己的项目
-        if current_user.role != UserRole.STUDENT:
-            raise HTTPException(status_code=403, detail="只有学生可以创建同伴互评")
-        if project.owner_id == current_user.id:
-            raise HTTPException(status_code=400, detail="不能评估自己的项目")
-    elif evaluation_data.evaluation_type == EvaluationType.SELF:
-        # 自评：必须是项目所有者
-        if project.owner_id != current_user.id:
-            raise HTTPException(status_code=403, detail="只能评估自己的项目")
-    
-    evaluation = Evaluation(
-        project_id=evaluation_data.project_id,
-        evaluator_user_id=current_user.id if evaluation_data.evaluation_type != EvaluationType.AI_AUTO else None,
-        evaluation_type=evaluation_data.evaluation_type,
-        cinematography_score=evaluation_data.cinematography_score,
-        editing_score=evaluation_data.editing_score,
-        sound_score=evaluation_data.sound_score,
-        overall_technical_score=evaluation_data.overall_technical_score,
-        narrative_score=evaluation_data.narrative_score,
-        visual_aesthetics_score=evaluation_data.visual_aesthetics_score,
-        emotional_impact_score=evaluation_data.emotional_impact_score,
-        overall_artistic_score=evaluation_data.overall_artistic_score,
-        technical_feedback=evaluation_data.technical_feedback,
-        artistic_feedback=evaluation_data.artistic_feedback,
-        overall_comment=evaluation_data.overall_comment,
-        suggestions=evaluation_data.suggestions
-    )
-    
-    db.add(evaluation)
-    db.commit()
-    db.refresh(evaluation)
-    return evaluation
+    try:
+        # 检查项目是否存在
+        project = db.query(Project).filter(Project.id == evaluation_data.project_id).first()
+        if not project:
+            raise HTTPException(status_code=404, detail="项目不存在")
+        
+        # 权限检查
+        if evaluation_data.evaluation_type == EvaluationType.TEACHER:
+            # 教师评估：必须是教师或管理员，且项目属于其课程
+            if current_user.role not in [UserRole.TEACHER, UserRole.ADMIN]:
+                raise HTTPException(status_code=403, detail="只有教师可以创建教师评估")
+        elif evaluation_data.evaluation_type == EvaluationType.PEER:
+            # 同伴互评：必须是学生，且不能评估自己的项目
+            if current_user.role != UserRole.STUDENT:
+                raise HTTPException(status_code=403, detail="只有学生可以创建同伴互评")
+            if project.owner_id == current_user.id:
+                raise HTTPException(status_code=400, detail="不能评估自己的项目")
+        elif evaluation_data.evaluation_type == EvaluationType.SELF:
+            # 自评：必须是项目所有者
+            if project.owner_id != current_user.id:
+                raise HTTPException(status_code=403, detail="只能评估自己的项目")
+        
+        evaluation = Evaluation(
+            project_id=evaluation_data.project_id,
+            evaluator_user_id=current_user.id if evaluation_data.evaluation_type != EvaluationType.AI_AUTO else None,
+            evaluation_type=evaluation_data.evaluation_type,
+            cinematography_score=evaluation_data.cinematography_score,
+            editing_score=evaluation_data.editing_score,
+            sound_score=evaluation_data.sound_score,
+            overall_technical_score=evaluation_data.overall_technical_score,
+            narrative_score=evaluation_data.narrative_score,
+            visual_aesthetics_score=evaluation_data.visual_aesthetics_score,
+            emotional_impact_score=evaluation_data.emotional_impact_score,
+            overall_artistic_score=evaluation_data.overall_artistic_score,
+            technical_feedback=evaluation_data.technical_feedback,
+            artistic_feedback=evaluation_data.artistic_feedback,
+            overall_comment=evaluation_data.overall_comment,
+            suggestions=evaluation_data.suggestions,
+            teacher_feedback_box=evaluation_data.teacher_feedback_box
+        )
+        
+        db.add(evaluation)
+        db.commit()
+        db.refresh(evaluation)
+        return EvaluationResponse.from_orm(evaluation)
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"创建评估失败: {str(e)}")
 
 @router.get("/project/{project_id}", response_model=List[EvaluationResponse])
 async def list_project_evaluations(
@@ -118,19 +231,119 @@ async def list_project_evaluations(
     db: Session = Depends(get_db)
 ):
     """获取项目的所有评估"""
-    project = db.query(Project).filter(Project.id == project_id).first()
+    try:
+        project = db.query(Project).filter(Project.id == project_id).first()
+        if not project:
+            raise HTTPException(status_code=404, detail="项目不存在")
+        
+        # 权限检查：学生只能看自己项目的评估
+        if current_user.role == UserRole.STUDENT and project.owner_id != current_user.id:
+            raise HTTPException(status_code=403, detail="无权访问此项目的评估")
+        
+        evaluations = db.query(Evaluation).filter(
+            Evaluation.project_id == project_id
+        ).order_by(Evaluation.created_at.desc()).all()
+        
+        # 转换评估对象为字典格式
+        result = []
+        for eval in evaluations:
+            try:
+                # 安全地获取evaluation_type的值
+                if eval.evaluation_type is None:
+                    eval_type_str = "unknown"
+                elif isinstance(eval.evaluation_type, str):
+                    eval_type_str = eval.evaluation_type
+                elif hasattr(eval.evaluation_type, 'value'):
+                    eval_type_str = eval.evaluation_type.value
+                else:
+                    eval_type_str = str(eval.evaluation_type)
+                
+                eval_dict = {
+                    "id": eval.id,
+                    "project_id": eval.project_id,
+                    "evaluator_user_id": eval.evaluator_user_id,
+                    "evaluation_type": eval_type_str,
+                    "cinematography_score": eval.cinematography_score,
+                    "editing_score": eval.editing_score,
+                    "sound_score": eval.sound_score,
+                    "overall_technical_score": eval.overall_technical_score,
+                    "narrative_score": eval.narrative_score,
+                    "visual_aesthetics_score": eval.visual_aesthetics_score,
+                    "emotional_impact_score": eval.emotional_impact_score,
+                    "overall_artistic_score": eval.overall_artistic_score,
+                    "technical_feedback": eval.technical_feedback,
+                    "artistic_feedback": eval.artistic_feedback,
+                    "overall_comment": eval.overall_comment,
+                    "suggestions": eval.suggestions,
+                    "teacher_feedback_box": eval.teacher_feedback_box,
+                    "detailed_analysis": eval.detailed_analysis,
+                    "created_at": eval.created_at,
+                    "updated_at": eval.updated_at,
+                }
+                result.append(EvaluationResponse(**eval_dict))
+            except Exception as e:
+                import traceback
+                print(f"转换评估对象 {eval.id} 时出错: {str(e)}")
+                traceback.print_exc()
+                # 跳过有问题的评估对象，继续处理其他的
+                continue
+        
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"获取评估列表失败: {str(e)}")
+
+@router.put("/{evaluation_id}", response_model=EvaluationResponse)
+async def update_evaluation(
+    evaluation_id: int,
+    evaluation_data: EvaluationCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """更新评估"""
+    evaluation = db.query(Evaluation).filter(Evaluation.id == evaluation_id).first()
+    if not evaluation:
+        raise HTTPException(status_code=404, detail="评估不存在")
+    
+    # 检查项目是否存在
+    project = db.query(Project).filter(Project.id == evaluation_data.project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="项目不存在")
     
-    # 权限检查：学生只能看自己项目的评估
-    if current_user.role == UserRole.STUDENT and project.owner_id != current_user.id:
-        raise HTTPException(status_code=403, detail="无权访问此项目的评估")
+    # 权限检查：只有评估创建者或教师/管理员可以更新
+    if evaluation.evaluation_type == EvaluationType.TEACHER:
+        if current_user.role not in [UserRole.TEACHER, UserRole.ADMIN]:
+            raise HTTPException(status_code=403, detail="只有教师可以更新教师评估")
+    elif evaluation.evaluation_type == EvaluationType.PEER:
+        if evaluation.evaluator_user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="只能更新自己的评估")
+    elif evaluation.evaluation_type == EvaluationType.SELF:
+        if evaluation.evaluator_user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="只能更新自己的评估")
     
-    evaluations = db.query(Evaluation).filter(
-        Evaluation.project_id == project_id
-    ).order_by(Evaluation.created_at.desc()).all()
+    # 更新评估字段
+    evaluation.project_id = evaluation_data.project_id
+    evaluation.evaluation_type = evaluation_data.evaluation_type
+    evaluation.cinematography_score = evaluation_data.cinematography_score
+    evaluation.editing_score = evaluation_data.editing_score
+    evaluation.sound_score = evaluation_data.sound_score
+    evaluation.overall_technical_score = evaluation_data.overall_technical_score
+    evaluation.narrative_score = evaluation_data.narrative_score
+    evaluation.visual_aesthetics_score = evaluation_data.visual_aesthetics_score
+    evaluation.emotional_impact_score = evaluation_data.emotional_impact_score
+    evaluation.overall_artistic_score = evaluation_data.overall_artistic_score
+    evaluation.technical_feedback = evaluation_data.technical_feedback
+    evaluation.artistic_feedback = evaluation_data.artistic_feedback
+    evaluation.overall_comment = evaluation_data.overall_comment
+    evaluation.suggestions = evaluation_data.suggestions
+    evaluation.teacher_feedback_box = evaluation_data.teacher_feedback_box
     
-    return evaluations
+    db.commit()
+    db.refresh(evaluation)
+    return EvaluationResponse.from_orm(evaluation)
 
 @router.post("/project/{project_id}/ai-evaluate")
 async def ai_evaluate_project(

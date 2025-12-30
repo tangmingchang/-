@@ -97,3 +97,13 @@ celerybeat.pid
 # Backup files
 *.bak
 ~$*
+
+# Large media files
+*.mp4
+*.avi
+*.mov
+*.wmv
+*.flv
+
+# Backup directories
+python-*/
